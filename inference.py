@@ -38,46 +38,45 @@ def run_on_subset(func, data_subset):
 def parallelize_on_rows(data, func, num_of_processes=8):
     return parallelize(data, partial(run_on_subset, func), num_of_processes)
 
-    
+
 def norm_times(row):
     row['Elapsed'] = (row['Close Date'] - row['Created Date']).days
     return row
 
 
-def preprocess(df: DataFrame, interactions: DataFrame) -> DataFrame:
+def preprocess(df: DataFrame) -> DataFrame:
     label_encoder = LabelEncoder()
     label_encoder.fit(df['Agent'])
     df.Agent = label_encoder.transform(df.Agent)
-    
+
     df.Close_Value = df.groupby('Product').transform(lambda x: x.fillna(x.mean())).Close_Value
-    
+
     label_encoder.fit(df['Product'])
     df.Product = label_encoder.transform(df.Product)
-    
+
     new_df = parallelize_on_rows(df, norm_times)
     X = new_df[['Agent', 'Product', 'Close_Value', 'Elapsed']]
     return X
 
 
-def inference(df: DataFrame, interactions: DataFrame) -> List[int]:
+def inference(df: DataFrame) -> List[int]:
     """
     path: a DataFrame
-    result is the output of function which should be 
+    result is the output of function which should be
     somethe like: [0,1,1,1,0]
     0 -> Lost
     1 -> Won
     --------------------------
     Usage:
     >>> df = pd.read_excel('dataset.xls', index_col=0)
-    >>> idf = pd.read_excel('interactions.xlsx')
-    >>> inference(df.drop(['Stage'], axis=1), idf)
+    >>> inference(df.drop(['Stage'], axis=1))
     [1,
      0,
      0,
      1,
     ...]
     """
-    
-    df = preprocess(df, interactions)
+
+    df = preprocess(df)
     result = list(model.predict(df))
     return result
